@@ -16,6 +16,18 @@ export type QueryInput = {
   };
 };
 
+export type ImageGenerationInput = {
+  prompt: string;
+  model?: "dall-e-2" | "dall-e-3" | "gpt-image-1";
+  size?: "256x256" | "512x512" | "1024x1024" | "1024x1792" | "1792x1024" | "1024x1536";
+  quality?: "standard" | "hd" | "low";
+  style?: "natural" | "vivid";
+  response_format?: "url" | "b64_json";
+  n?: number;
+  output_format?: "png" | "jpeg";
+  output_compression?: number;
+};
+
 type WebSearchPreviewTool = {
   type: "web_search_preview";
   search_context_size?: SearchContextSize;
@@ -98,4 +110,54 @@ export async function runQuery(openai: OpenAI, input: QueryInput, cfg: AppConfig
   );
   const text = extractOutputText(response) ?? "";
   return text || "No response text available.";
+}
+
+export async function generateImage(openai: OpenAI, input: ImageGenerationInput, cfg: AppConfig) {
+  const model = input.model ?? "gpt-image-1";
+  const size = input.size ?? "1024x1024";
+  const quality = input.quality ?? "standard";
+  const responseFormat = input.response_format ?? "url";
+  const n = input.n ?? 1;
+
+  // DALL-E 3 and gpt-image-1 only support n=1
+  if (n > 1 && model === "dall-e-3") {
+    throw new Error("DALL-E 3 only supports generating 1 image at a time");
+  }
+
+  // Build request parameters with proper typing
+  const baseParams = {
+    model,
+    prompt: input.prompt,
+    size,
+    response_format: responseFormat,
+  };
+
+  // Add model-specific parameters
+  let requestParams: any = { ...baseParams };
+  
+  if (model === "dall-e-3" || model === "gpt-image-1") {
+    if (input.style) requestParams.style = input.style;
+    if (quality) requestParams.quality = quality;
+  }
+  
+  if (model === "gpt-image-1") {
+    // gpt-image-1 specific parameters
+    if (input.output_format) requestParams.output_format = input.output_format;
+    if (input.output_compression) requestParams.output_compression = input.output_compression;
+  } else {
+    // For DALL-E 2 and DALL-E 3
+    requestParams.n = n;
+  }
+
+  const response = await openai.images.generate(requestParams as any);
+  
+  return {
+    images: (response.data || []).map(image => ({
+      url: image.url || undefined,
+      b64_json: image.b64_json || undefined,
+      revised_prompt: ('revised_prompt' in image) ? (image as any).revised_prompt : undefined,
+    })),
+    model,
+    size,
+  };
 }

@@ -53,6 +53,11 @@ export interface AppConfig {
   defaultVerbosity?: Verbosity;
   webSearchDefaultEnabled: boolean;
   webSearchContextSize?: SearchContextSize;
+  // Image generation defaults
+  imageModel: string;
+  imageSize: string;
+  imageQuality: string;
+  imageResponseFormat: string;
 }
 
 function toBoolean(value: string | undefined, fallback: boolean): boolean {
@@ -81,4 +86,9 @@ export const config: AppConfig = {
   defaultVerbosity: (process.env.DEFAULT_VERBOSITY as Verbosity | undefined) ?? "medium",
   webSearchDefaultEnabled: toBoolean(process.env.WEB_SEARCH_DEFAULT_ENABLED, false),
   webSearchContextSize: (process.env.WEB_SEARCH_CONTEXT_SIZE as SearchContextSize | undefined) ?? "medium",
+  // Image generation defaults
+  imageModel: process.env.IMAGE_MODEL || "gpt-image-1",
+  imageSize: process.env.IMAGE_SIZE || "1024x1024",
+  imageQuality: process.env.IMAGE_QUALITY || "standard",
+  imageResponseFormat: process.env.IMAGE_RESPONSE_FORMAT || "url",
 };

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 // IMPORTANT: clear the module cache and process.env before each test
 function resetEnv() {
   for (const k of Object.keys(process.env)) {
-    if (k.startsWith("OPENAI_") || k === "ENV_FILE" || k === "DEFAULT_VERBOSITY" || k.startsWith("WEB_SEARCH_")) {
+    if (k.startsWith("OPENAI_") || k === "ENV_FILE" || k === "DEFAULT_VERBOSITY" || k.startsWith("WEB_SEARCH_") || k.startsWith("IMAGE_") || k === "REASONING_EFFORT") {
       delete (process.env as any)[k];
     }
   }

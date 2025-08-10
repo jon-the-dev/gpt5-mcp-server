@@ -1,10 +1,11 @@
 # GPT-5 MCP Server (TypeScript)
 
-An MCP server that exposes a `gpt5_query` tool for GPT-5 inference via OpenAI Responses API, with optional Web Search Preview. Supports per-call overrides for verbosity, reasoning effort, and other parameters.
+An MCP server that exposes a `gpt5_query` tool for GPT-5 inference via OpenAI Responses API, and a `generate_image` tool for image generation using DALL-E and GPT-Image models. Features optional Web Search Preview and per-call overrides for various parameters.
 
 [日本語はこちら](#ja)
 
 ## Features
+
 - TypeScript MCP server using `@modelcontextprotocol/sdk`
 - `gpt5_query` tool
   - `web_search_preview` integration (optional)
@@ -12,6 +13,11 @@ An MCP server that exposes a `gpt5_query` tool for GPT-5 inference via OpenAI Re
   - `reasoning.effort` (low|medium|high)
   - `tool_choice` (auto|none), `parallel_tool_calls`
   - `system` prompt, `model`, `max_output_tokens`
+- `generate_image` tool
+  - Support for DALL-E 2, DALL-E 3, and GPT-Image-1 models
+  - Multiple image sizes and quality options
+  - Style preferences (natural|vivid)
+  - Base64 or URL response formats
 - Config via environment variables with per-call overrides
 
 ## Quick Start
@@ -35,6 +41,11 @@ REASONING_EFFORT=medium
 DEFAULT_VERBOSITY=medium
 WEB_SEARCH_DEFAULT_ENABLED=false
 WEB_SEARCH_CONTEXT_SIZE=medium
+# Image generation defaults
+IMAGE_MODEL=gpt-image-1
+IMAGE_SIZE=1024x1024
+IMAGE_QUALITY=standard
+IMAGE_RESPONSE_FORMAT=url
 ```
 
 3) Build and run
@@ -55,25 +66,30 @@ pnpm run dev
 This server speaks Model Context Protocol (MCP) over stdio and emits pure JSON to stdout, making it safe for Claude Code and Claude Desktop.
 
 Prerequisites
+
 - Node.js 18+
 - OpenAI API key via `.env` or environment variable
 
 0) Build
+
 ```bash
 pnpm run build
 ```
 
 1) Run directly (recommended)
+
 - Command: `node`
 - Args: `dist/cli.js`
 - CWD: repository root (required if you want `.env` to be loaded)
 
 Example:
+
 ```bash
 node dist/cli.js
 ```
 
 2) Add to Claude Code (VS Code)
+
 - Command Palette → "Claude: Manage MCP Servers"
 - "Add server" with:
   - Name: `gpt5-mcp`
@@ -125,17 +141,20 @@ Option B: explicit env vars
 ```
 
 4) CLI usage
+
 - Package exposes bin(s).
   - Local link: `npm link` → run `gpt5-mcp-server`
   - Global (after publish): `npm i -g gpt5-mcp-server` → `gpt5-mcp-server`
   - Direct: `node /absolute/path/to/gpt5-mcp-server/dist/cli.js`
 
 5) Web Search notes
+
 - Due to OpenAI constraints, `web_search_preview` cannot be combined with `reasoning.effort = minimal`.
 - This server automatically bumps effort to `medium` if `web_search.enabled = true`.
 - If you need strict `minimal`, set `web_search.enabled = false`.
 
 7) Troubleshooting
+
 - JSON parse error (Unexpected token ...)
   - Likely extra logs on stdio. Use `node dist/cli.js`, avoid `npx`.
 - Auth error
@@ -145,7 +164,9 @@ Option B: explicit env vars
 - 400 with Web Search
   - Caused by `minimal` effort + web search. It's auto-bumped to `medium`; alternatively set `reasoning_effort=medium` or disable `web_search`.
 
-## Tool: gpt5_query
+## Tools
+
+### Tool: gpt5_query
 
 Input schema (JSON):
 
@@ -183,6 +204,7 @@ Example call (Inspector or client):
 ```
 
 Defaults and behavior
+
 - model: defaults to `OPENAI_MODEL` (env). Example: `gpt-5`.
 - system: optional. Sent as `instructions`.
 - reasoning_effort: accepts `low|minimal|medium|high`. Internally `low` → `minimal`。
@@ -195,6 +217,7 @@ Defaults and behavior
 - web_search.search_context_size: defaults to `WEB_SEARCH_CONTEXT_SIZE` (env). Allowed: `low|medium|high`.
 
 Environment variable mapping
+
 - `OPENAI_API_KEY` (required)
 - `OPENAI_MODEL` → model default
 - `OPENAI_MAX_RETRIES` → OpenAI client
@@ -205,17 +228,79 @@ Environment variable mapping
 - `WEB_SEARCH_CONTEXT_SIZE` → web_search.search_context_size default (`low|medium|high`)
 
 Output shape
+
 - On success: `content: [{ type: "text", text: string }]`
 - On error: `isError: true` and a `text` item with `Error: ...`
 
+### Tool: generate_image
+
+Input schema (JSON):
+
+```json
+{
+  "prompt": "string",
+  "model": "dall-e-2|dall-e-3|gpt-image-1?",
+  "size": "256x256|512x512|1024x1024|1024x1792|1792x1024|1024x1536?",
+  "quality": "standard|hd|low?",
+  "style": "natural|vivid?",
+  "response_format": "url|b64_json?",
+  "n": "number?",
+  "output_format": "png|jpeg?",
+  "output_compression": "number?"
+}
+```
+
+Example call (Inspector or client):
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "generate_image",
+    "arguments": {
+      "prompt": "A futuristic city skyline at sunset",
+      "model": "gpt-image-1",
+      "size": "1024x1024",
+      "quality": "hd"
+    }
+  }
+}
+```
+
+Defaults and behavior
+
+- model: defaults to `IMAGE_MODEL` (env). Example: `gpt-image-1`.
+- size: defaults to `IMAGE_SIZE` (env). Supported sizes vary by model.
+- quality: defaults to `IMAGE_QUALITY` (env). `hd` creates images with finer details (DALL-E 3, gpt-image-1 only).
+- style: `vivid` (hyper-real, dramatic) or `natural` (less hyper-real). DALL-E 3 and gpt-image-1 only.
+- response_format: defaults to `IMAGE_RESPONSE_FORMAT` (env). `url` returns image URLs, `b64_json` returns base64-encoded images.
+- n: number of images to generate. DALL-E 2 supports 1-10, DALL-E 3 and gpt-image-1 support only 1.
+- output_format: `png` or `jpeg`. gpt-image-1 only.
+- output_compression: 1-100 compression level. gpt-image-1 only.
+
+Environment variable mapping
+
+- `IMAGE_MODEL` → model default (`dall-e-2|dall-e-3|gpt-image-1`)
+- `IMAGE_SIZE` → size default
+- `IMAGE_QUALITY` → quality default (`standard|hd|low`)
+- `IMAGE_RESPONSE_FORMAT` → response_format default (`url|b64_json`)
+
+Output shape
+
+- On success: `content: [{ type: "text", text: string }]` with image URLs and metadata
+- On error: `isError: true` and a `text` item with `Error: ...`
+
 ## Notes
+
 - If the selected model does not support certain fields (e.g., `verbosity`), they are ignored.
 - Keep API keys out of logs. Ensure `.env` is not committed.
 
 ## License
+
 MIT
 
 ## 日本語 (Japanese)
+
 <a id="ja"></a>
 
 ### ツール: gpt5_query
@@ -256,6 +341,7 @@ MIT
 ```
 
 既定値と挙動
+
 - model: 既定は `OPENAI_MODEL`（環境変数）。例: `gpt-5`。
 - system: 任意。OpenAI には `instructions` として送信します。
 - reasoning_effort: `low|minimal|medium|high` を受け付け、内部的に `low` は `minimal` として扱われます。
@@ -268,6 +354,7 @@ MIT
 - web_search.search_context_size: 既定は `WEB_SEARCH_CONTEXT_SIZE`（環境変数）。許容値: `low|medium|high`。
 
 環境変数マッピング
+
 - `OPENAI_API_KEY`（必須）
 - `OPENAI_MODEL` → model 既定
 - `OPENAI_MAX_RETRIES` → OpenAI クライアント設定
@@ -278,10 +365,12 @@ MIT
 - `WEB_SEARCH_CONTEXT_SIZE` → web_search.search_context_size 既定（`low|medium|high`）
 
 出力形式
+
 - 成功時: `content: [{ type: "text", text: string }]`
 - エラー時: `isError: true` と `text` に `Error: ...`
 
 注意
+
 - 選択したモデルが特定のフィールド（例: `verbosity`）をサポートしない場合、それらは無視されます。
 - API キーはログに出力しません。`.env` はコミットしないでください。
 
@@ -290,25 +379,30 @@ MIT
 このサーバーは Model Context Protocol (MCP) の標準入出力（stdio）で動作します。純粋な JSON のみを stdout に出力する設計のため、MCP Inspector / Claude Code / Claude Desktop で安全に接続できます。
 
 前提
+
 - Node.js 18+
 - OpenAI APIキーが `.env` もしくは環境変数で設定されていること
 
 0) ビルド
+
 ```bash
 pnpm run build
 ```
 
 1) 直接起動（推奨）
+
 - コマンド: `node`
 - 引数: `dist/cli.js`
 - CWD: リポジトリのルート（`.env` を読む場合は必須）
 
 例:
+
 ```bash
 node dist/cli.js
 ```
 
 2) Claude Code（VS Code 拡張）に追加
+
 - VS Code のコマンドパレット → 「Claude: Manage MCP Servers」
 - 「Add server」で次を入力:
   - Name: `gpt5-mcp`
@@ -360,17 +454,20 @@ node dist/cli.js
 ```
 
 4) CLI の利用
+
 - パッケージには bin が含まれます。
   - ローカルリンク: `npm link` 後に `gpt5-mcp-server`
   - グローバル（公開後）: `npm i -g gpt5-mcp-server` → `gpt5-mcp-server`
   - 直接実行: `node /絶対/パス/gpt5-mcp-server/dist/cli.js`
 
 5) Web Search に関する注意
+
 - OpenAI の制約により、`web_search_preview` は `reasoning.effort = minimal` と併用できません。
 - 本サーバーは `web_search.enabled = true` の場合、自動的に effort を `medium` に引き上げて呼び出します。
 - もし `minimal` を厳格に使いたい場合は、`web_search.enabled = false` にしてください。
 
 6) トラブルシューティング
+
 - JSON パースエラー（Unexpected token ...）
   - stdio に余計な出力が混ざっている可能性があります。`node dist/cli.js` を使い、`npx` は避けてください。
   - `.env` 読み込みやライブラリのログは既に抑止済みです。
