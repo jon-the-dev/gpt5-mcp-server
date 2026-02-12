@@ -1,20 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { runQuery, buildOpenAIRequest, type QueryInput } from "../src/openai.ts";
-import type { AppConfig } from "../src/config.ts";
-
-function cfg(partial: Partial<AppConfig> = {}): AppConfig {
-  return {
-    apiKey: "sk-test",
-    model: "gpt-5",
-    maxRetries: 3,
-    timeoutMs: 60000,
-    reasoningEffort: "medium",
-    defaultVerbosity: "medium",
-    webSearchDefaultEnabled: false,
-    webSearchContextSize: "medium",
-    ...partial,
-  } as AppConfig;
-}
+import type OpenAI from "openai";
+import { runQuery, buildOpenAIRequest, type QueryInput } from "../src/openai.js";
+import { cfg } from "./helpers.js";
 
 describe("runQuery", () => {
   it("calls OpenAI.responses.create with built request and returns output_text", async () => {
@@ -36,7 +23,7 @@ describe("runQuery", () => {
       responses: {
         create: vi.fn().mockResolvedValue({ output_text: "OK" }),
       },
-    } as any;
+    } as unknown as OpenAI;
 
     const text = await runQuery(fakeOpenAI, input, cfg());
 
@@ -46,7 +33,7 @@ describe("runQuery", () => {
   });
 
   it("returns fallback message when output_text missing", async () => {
-    const fakeOpenAI = { responses: { create: vi.fn().mockResolvedValue({}) } } as any;
+    const fakeOpenAI = { responses: { create: vi.fn().mockResolvedValue({ output_text: "" }) } } as unknown as OpenAI;
     const text = await runQuery(fakeOpenAI, { query: "q" }, cfg());
     expect(text).toBe("No response text available.");
   });

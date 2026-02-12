@@ -1,6 +1,6 @@
 {
   "name": "gpt5-mcp-server",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "An MCP server exposing GPT-5 inference with optional Web Search Preview.",
   "type": "module",
   "bin": {
@@ -13,7 +13,8 @@
     "start": "node dist/cli.js",
     "check": "tsc --noEmit",
     "test": "vitest --run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint src/ tests/"
   },
   "engines": {
     "node": ">=18"
@@ -30,9 +31,12 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^24.2.0",
-    "vitest": "^2.0.5",
+    "eslint": "^9.39.2",
     "tsx": "^4.20.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.55.0",
+    "vitest": "^2.0.5"
   }
 }

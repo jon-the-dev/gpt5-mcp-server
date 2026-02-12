@@ -1,20 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { buildOpenAIRequest, type QueryInput } from "../src/openai.ts";
-import type { AppConfig, ReasoningEffort, SearchContextSize, Verbosity } from "../src/config.ts";
-
-function cfg(partial: Partial<AppConfig> = {}): AppConfig {
-  return {
-    apiKey: "sk-test",
-    model: "gpt-5",
-    maxRetries: 3,
-    timeoutMs: 60000,
-    reasoningEffort: "medium",
-    defaultVerbosity: "medium",
-    webSearchDefaultEnabled: false,
-    webSearchContextSize: "medium",
-    ...partial,
-  } as AppConfig;
-}
+import { buildOpenAIRequest, type QueryInput } from "../src/openai.js";
+import type { ReasoningEffort, SearchContextSize, Verbosity } from "../src/config.js";
+import { cfg } from "./helpers.js";
 
 describe("buildOpenAIRequest", () => {
   it("builds minimal request with defaults", () => {

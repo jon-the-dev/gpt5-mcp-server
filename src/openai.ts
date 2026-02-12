@@ -1,4 +1,5 @@
 import type OpenAI from "openai";
+import type { Response, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses.js";
 import type { ReasoningEffort, SearchContextSize, Verbosity, AppConfig } from "./config.js";
 
 export type QueryInput = {
@@ -83,19 +84,10 @@ export function buildOpenAIRequest(input: QueryInput, cfg: AppConfig): OpenAIReq
   return req;
 }
 
-function extractOutputText(res: unknown): string | undefined {
-  if (typeof res === "object" && res !== null && "output_text" in res) {
-    const v = (res as { output_text?: unknown }).output_text;
-    if (typeof v === "string") return v;
-  }
-  return undefined;
-}
-
 export async function runQuery(openai: OpenAI, input: QueryInput, cfg: AppConfig) {
   const req = buildOpenAIRequest(input, cfg);
-  const response: unknown = await openai.responses.create(
-    req as unknown as Record<string, unknown>
+  const response: Response = await openai.responses.create(
+    req as ResponseCreateParamsNonStreaming
   );
-  const text = extractOutputText(response) ?? "";
-  return text || "No response text available.";
+  return response.output_text || "No response text available.";
 }

@@ -1,60 +1,51 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
+import { describe, it, expect } from "vitest";
+import { createConfig } from "../src/config.js";
 
-// IMPORTANT: clear the module cache and process.env before each test
-function resetEnv() {
-  for (const k of Object.keys(process.env)) {
-    if (k.startsWith("OPENAI_") || k === "ENV_FILE" || k === "DEFAULT_VERBOSITY" || k.startsWith("WEB_SEARCH_")) {
-      delete (process.env as any)[k];
-    }
-  }
-}
-
-// Dynamically import config after env setup
-async function loadConfig() {
-  vi.resetModules();
-  const mod = await import("../src/config.ts");
-  return mod;
-}
-
-describe("config.ts", () => {
-  beforeEach(() => {
-    resetEnv();
-  });
-
-  it("falls back to defaults when env missing", async () => {
-    // Force loader to use an empty env file and stop searching
-    const here = fileURLToPath(new URL("./", import.meta.url));
-    process.env.ENV_FILE = path.resolve(here, "fixtures/.env.empty");
-    const { config } = await loadConfig();
+describe("createConfig", () => {
+  it("falls back to defaults when env empty", () => {
+    const config = createConfig({});
     expect(config.model).toBe("gpt-5");
     expect(config.maxRetries).toBe(3);
     expect(config.timeoutMs).toBe(60000);
     expect(config.defaultVerbosity).toBe("medium");
     expect(config.webSearchDefaultEnabled).toBe(false);
     expect(config.webSearchContextSize).toBe("medium");
+    expect(config.apiKey).toBeUndefined();
   });
 
-  it("reads from ENV_FILE when provided", async () => {
-    const here = fileURLToPath(new URL("./", import.meta.url));
-    const envPath = path.resolve(here, "fixtures/.env.sample");
-    process.env.ENV_FILE = envPath;
-    const { config } = await loadConfig();
-    expect(config.apiKey).toBe("sk-test-from-file");
+  it("reads values from env", () => {
+    const config = createConfig({
+      OPENAI_API_KEY: "sk-test-from-env",
+      OPENAI_TIMEOUT_MS: "120000",
+      REASONING_EFFORT: "low",
+    });
+    expect(config.apiKey).toBe("sk-test-from-env");
     expect(config.timeoutMs).toBe(120000);
     expect(config.reasoningEffort).toBe("minimal");
   });
 
-  it("normalizes reasoning_effort: low -> minimal", async () => {
-    process.env.REASONING_EFFORT = "low";
-    const { config } = await loadConfig();
+  it("normalizes reasoning_effort: low -> minimal", () => {
+    const config = createConfig({ REASONING_EFFORT: "low" });
     expect(config.reasoningEffort).toBe("minimal");
   });
 
-  it("boolean coercion for WEB_SEARCH_DEFAULT_ENABLED", async () => {
-    process.env.WEB_SEARCH_DEFAULT_ENABLED = "true";
-    const { config } = await loadConfig();
+  it("normalizes reasoning_effort: high", () => {
+    const config = createConfig({ REASONING_EFFORT: "high" });
+    expect(config.reasoningEffort).toBe("high");
+  });
+
+  it("boolean coercion for WEB_SEARCH_DEFAULT_ENABLED", () => {
+    const config = createConfig({ WEB_SEARCH_DEFAULT_ENABLED: "true" });
     expect(config.webSearchDefaultEnabled).toBe(true);
+  });
+
+  it("boolean coercion returns false for unrecognized values", () => {
+    const config = createConfig({ WEB_SEARCH_DEFAULT_ENABLED: "nope" });
+    expect(config.webSearchDefaultEnabled).toBe(false);
+  });
+
+  it("uses custom model name", () => {
+    const config = createConfig({ OPENAI_MODEL: "gpt-5.1" });
+    expect(config.model).toBe("gpt-5.1");
   });
 });

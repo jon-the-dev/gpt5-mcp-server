@@ -8,7 +8,7 @@ import { runQuery } from "./openai.js";
 import type { QueryInput } from "./openai.js";
 
 // Initialize MCP server
-const server = new McpServer({ name: "gpt5-mcp", version: "0.1.0" });
+const server = new McpServer({ name: "gpt5-mcp", version: "1.0.0" });
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -19,7 +19,7 @@ const openai = new OpenAI({
 
 // Input schema for the gpt5.query tool
 const QueryInputSchema = z.object({
-  query: z.string().describe("User question or instruction"),
+  query: z.string().max(100_000).describe("User question or instruction"),
   // Per-call overrides
   model: z.string().optional().describe("Model name, e.g. gpt-5"),
   system: z.string().optional().describe("Optional system prompt/instructions for the model"),
@@ -61,6 +61,7 @@ server.tool(
 async function main() {
   if (!config.apiKey) {
     console.error("OPENAI_API_KEY is not set. Please set it in your environment or .env file.");
+    process.exit(1);
   }
   const transport = new StdioServerTransport();
   await server.connect(transport);

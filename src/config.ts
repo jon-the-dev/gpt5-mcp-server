@@ -72,13 +72,17 @@ function normalizeReasoningEffort(value: string | undefined): ReasoningEffort {
   return "medium";
 }
 
-export const config: AppConfig = {
-  apiKey: process.env.OPENAI_API_KEY,
-  model: process.env.OPENAI_MODEL || "gpt-5",
-  maxRetries: toNumber(process.env.OPENAI_MAX_RETRIES, 3),
-  timeoutMs: toNumber(process.env.OPENAI_TIMEOUT_MS, 60_000),
-  reasoningEffort: normalizeReasoningEffort(process.env.REASONING_EFFORT),
-  defaultVerbosity: (process.env.DEFAULT_VERBOSITY as Verbosity | undefined) ?? "medium",
-  webSearchDefaultEnabled: toBoolean(process.env.WEB_SEARCH_DEFAULT_ENABLED, false),
-  webSearchContextSize: (process.env.WEB_SEARCH_CONTEXT_SIZE as SearchContextSize | undefined) ?? "medium",
-};
+export function createConfig(env: Record<string, string | undefined> = process.env): AppConfig {
+  return {
+    apiKey: env.OPENAI_API_KEY,
+    model: env.OPENAI_MODEL || "gpt-5",
+    maxRetries: toNumber(env.OPENAI_MAX_RETRIES, 3),
+    timeoutMs: toNumber(env.OPENAI_TIMEOUT_MS, 60_000),
+    reasoningEffort: normalizeReasoningEffort(env.REASONING_EFFORT),
+    defaultVerbosity: (env.DEFAULT_VERBOSITY as Verbosity | undefined) ?? "medium",
+    webSearchDefaultEnabled: toBoolean(env.WEB_SEARCH_DEFAULT_ENABLED, false),
+    webSearchContextSize: (env.WEB_SEARCH_CONTEXT_SIZE as SearchContextSize | undefined) ?? "medium",
+  };
+}
+
+export const config: AppConfig = createConfig();
